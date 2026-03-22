@@ -1,0 +1,26 @@
+# Core dependencies
+ultralytics>=8.0.0
+insightface>=0.7.3
+onnxruntime>=1.16.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+Pillow>=10.0.0
+
+# Database
+sqlalchemy>=2.0.0
+
+# Flask Dashboard
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# Utilities
+scipy>=1.11.0
+scikit-learn>=1.3.0
+requests>=2.31.0
+tqdm>=4.66.0
+
+# Optional: GPU acceleration (uncomment if CUDA available)
+# onnxruntime-gpu>=1.16.0
+
+# Development
+python-dotenv>=1.0.0

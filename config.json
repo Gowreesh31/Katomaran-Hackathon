@@ -1,0 +1,46 @@
+{
+  "camera": {
+    "source": "record_20250620_184049.mp4",
+    "width": 1280,
+    "height": 720,
+    "fps": 30
+  },
+  "detection": {
+    "model": "yolov8n-face.pt",
+    "imgsz": 320,
+    "conf_threshold": 0.45,
+    "iou_threshold": 0.5,
+    "tracker": "bytetrack.yaml"
+  },
+  "recognition": {
+    "model_pack": "buffalo_l",
+    "similarity_threshold": 0.6,
+    "embedding_dim": 512
+  },
+  "demographics": {
+    "enabled": true,
+    "model_path": "models/age_gender.onnx",
+    "input_size": 224
+  },
+  "pipeline": {
+    "headless": false,
+    "skip_frames": 2,
+    "snapshot_interval": 5,
+    "max_visitors": 10000
+  },
+  "dashboard": {
+    "host": "0.0.0.0",
+    "port": 5001,
+    "debug": false,
+    "auto_refresh_seconds": 10
+  },
+  "database": {
+    "path": "database/visitors.db",
+    "echo": false
+  },
+  "logging": {
+    "level": "INFO",
+    "log_dir": "logs",
+    "event_log": "logs/events.log"
+  }
+}

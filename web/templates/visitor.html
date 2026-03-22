@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visitor {{ visitor.visitor_id[-8:] }} · Katomaran</title>
+  <meta name="description" content="Biometric dossier for visitor {{ visitor.visitor_id }}." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <a href="/" class="back-link">← Dashboard</a>
+        <span class="logo-icon" style="margin-left:1.5rem;">◉</span>
+        <span class="logo-text">Visitor <span class="accent">Dossier</span></span>
+      </div>
+      <div class="header-status">
+        <span class="header-time" id="headerTime"></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" style="max-width:900px;">
+
+    <!-- ── Identity Card ── -->
+    <div class="glass-card dossier-card">
+      <div class="dossier-photo">
+        {% if visitor.crop_image_path %}
+          <img src="/snapshots/{{ visitor.visitor_id }}.jpg"
+               alt="Visitor photo"
+               class="dossier-img"
+               onerror="this.outerHTML='<div class=\'dossier-avatar\'>👤</div>'" />
+        {% else %}
+          <div class="dossier-avatar">👤</div>
+        {% endif %}
+        <div class="dossier-badge {{ 'badge-male' if visitor.gender == 'Male' else 'badge-female' if visitor.gender == 'Female' else 'badge-unknown' }}">
+          {{ visitor.gender or '?' }}
+        </div>
+      </div>
+
+      <div class="dossier-info">
+        <h1 class="dossier-name">VIS-{{ visitor.visitor_id[-12:] }}</h1>
+        <div class="dossier-meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Full ID</span>
+            <code class="meta-value mono">{{ visitor.visitor_id }}</code>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">First Seen</span>
+            <span class="meta-value">{{ visitor.first_seen.strftime('%Y-%m-%d %H:%M:%S') if visitor.first_seen else '—' }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Last Seen</span>
+            <span class="meta-value">{{ visitor.last_seen.strftime('%Y-%m-%d %H:%M:%S') if visitor.last_seen else '—' }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Total Visits</span>
+            <span class="meta-value accent-text">{{ visitor.visit_count }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Estimated Age</span>
+            <span class="meta-value">{{ '%.0f yrs'|format(visitor.age) if visitor.age else '—' }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Gender</span>
+            <span class="meta-value">{{ visitor.gender or '—' }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Gender Confidence</span>
+            <span class="meta-value">{{ '%.1f%%'|format((visitor.gender_confidence or 0) * 100) }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Recognition Score</span>
+            <span class="meta-value">{{ '%.4f'|format(visitor.recognition_confidence) if visitor.recognition_confidence else '—' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Confidence Meter ── -->
+    <div class="glass-card" style="margin-top:1.5rem;">
+      <h2 class="card-title">🔍 Biometric Confidence</h2>
+      <div class="conf-meter-wrap">
+        <div class="conf-meter-track">
+          <div class="conf-meter-fill"
+               style="width: {{ '%.0f'|format((visitor.recognition_confidence or 0) * 100) }}%">
+          </div>
+        </div>
+        <span class="conf-meter-label">{{ '%.1f%%'|format((visitor.recognition_confidence or 0) * 100) }}</span>
+      </div>
+    </div>
+
+    <!-- ── Event Timeline ── -->
+    <div class="glass-card" style="margin-top:1.5rem;">
+      <h2 class="card-title">🕐 Event Timeline</h2>
+      {% if events %}
+      <div class="timeline">
+        {% for e in events %}
+        <div class="timeline-item {{ 'event-new' if e.event_type == 'new' else 'event-returning' }}">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <span class="timeline-badge {{ e.event_type }}">{{ e.event_type.upper() }}</span>
+            <span class="timeline-time">{{ e.timestamp.strftime('%Y-%m-%d %H:%M:%S') if e.timestamp else '—' }}</span>
+            {% if e.track_id %}<span class="timeline-track">Track #{{ e.track_id }}</span>{% endif %}
+            {% if e.confidence %}<span class="timeline-sim">Sim: {{ '%.3f'|format(e.confidence) }}</span>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+        <p class="empty-row">No events recorded for this visitor.</p>
+      {% endif %}
+    </div>
+
+  </main>
+
+  <script>
+    function updateClock() {
+      document.getElementById("headerTime").textContent = new Date().toLocaleTimeString();
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+  </script>
+</body>
+</html>

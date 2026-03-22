@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Katomaran · Face Tracking Dashboard</title>
+  <meta name="description" content="Real-time intelligent face tracking analytics dashboard. Monitor visitors, demographics, and traffic patterns." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">◉</span>
+        <span class="logo-text">Katomaran <span class="accent">FaceTrack</span></span>
+      </div>
+      <div class="header-status">
+        <span class="status-dot pulse" id="statusDot"></span>
+        <span id="statusText">LIVE</span>
+        <span class="header-time" id="headerTime"></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- ── Stat Cards ── -->
+    <section class="stat-grid">
+      <div class="stat-card" id="card-total">
+        <div class="stat-icon">👥</div>
+        <div class="stat-value" id="totalVisitors">{{ stats.total }}</div>
+        <div class="stat-label">Total Visitors</div>
+      </div>
+      <div class="stat-card" id="card-new">
+        <div class="stat-icon">🆕</div>
+        <div class="stat-value" id="newToday">{{ stats.new_today }}</div>
+        <div class="stat-label">New Today</div>
+      </div>
+      <div class="stat-card" id="card-returning">
+        <div class="stat-icon">🔄</div>
+        <div class="stat-value" id="returningVisitors">{{ stats.returning }}</div>
+        <div class="stat-label">Returning</div>
+      </div>
+      <div class="stat-card" id="card-age">
+        <div class="stat-icon">🧬</div>
+        <div class="stat-value" id="avgAge">{{ stats.avg_age if stats.avg_age else '—' }}</div>
+        <div class="stat-label">Avg Age</div>
+      </div>
+    </section>
+
+    <!-- ── Charts Row ── -->
+    <section class="charts-row">
+      <div class="glass-card chart-card wide">
+        <h2 class="card-title">📈 Peak Traffic Hours</h2>
+        <canvas id="hourlyChart" height="100"></canvas>
+      </div>
+      <div class="glass-card chart-card">
+        <h2 class="card-title">⚧ Gender Distribution</h2>
+        <canvas id="genderChart"></canvas>
+      </div>
+      <div class="glass-card chart-card">
+        <h2 class="card-title">📊 Age Demographics</h2>
+        <canvas id="ageChart"></canvas>
+      </div>
+    </section>
+
+    <!-- ── Visitor Table ── -->
+    <section class="glass-card table-section">
+      <div class="table-header">
+        <h2 class="card-title">🧑 Recent Visitors</h2>
+        <input class="search-input" id="searchInput" type="text" placeholder="Search visitor ID…" />
+      </div>
+      <div class="table-wrap">
+        <table class="visitor-table" id="visitorTable">
+          <thead>
+            <tr>
+              <th>Snapshot</th>
+              <th>Visitor ID</th>
+              <th>First Seen</th>
+              <th>Last Seen</th>
+              <th>Visits</th>
+              <th>Age</th>
+              <th>Gender</th>
+              <th>Confidence</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in visitors %}
+            <tr data-id="{{ v.visitor_id }}">
+              <td>
+                {% if v.crop_image_path %}
+                  <img class="thumb" src="/snapshots/{{ v.visitor_id }}.jpg" alt="Visitor" onerror="this.src='/static/css/avatar.svg'" />
+                {% else %}
+                  <div class="thumb-placeholder">👤</div>
+                {% endif %}
+              </td>
+              <td><code class="vid-code">{{ v.visitor_id[-12:] }}</code></td>
+              <td>{{ v.first_seen.strftime('%Y-%m-%d %H:%M') if v.first_seen else '—' }}</td>
+              <td>{{ v.last_seen.strftime('%H:%M:%S') if v.last_seen else '—' }}</td>
+              <td><span class="badge">{{ v.visit_count }}</span></td>
+              <td>{{ '%.0f'|format(v.age) if v.age else '—' }}</td>
+              <td>
+                <span class="gender-tag {{ 'male' if v.gender == 'Male' else 'female' if v.gender == 'Female' else '' }}">
+                  {{ v.gender or '—' }}
+                </span>
+              </td>
+              <td>
+                <div class="conf-bar">
+                  <div class="conf-fill" style="width: {{ '%.0f'|format((v.recognition_confidence or 0) * 100) }}%"></div>
+                  <span>{{ '%.2f'|format(v.recognition_confidence) if v.recognition_confidence else '—' }}</span>
+                </div>
+              </td>
+              <td>
+                <a href="/visitor/{{ v.visitor_id }}" class="btn-view">View</a>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="9" class="empty-row">No visitors logged yet. Start the tracker!</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Scripts ── -->
+  <script>
+    // ── Chart data from Jinja ──────────────────────────────────────────────────
+    const hourlyData = {{ hourly | safe }};
+    const genderData = {{ gender_dist | safe }};
+    const ageData    = {{ age_dist | safe }};
+
+    // ── Colors ────────────────────────────────────────────────────────────────
+    const GLASS_BLUE   = "rgba(99, 179, 237, 0.85)";
+    const GLASS_PINK   = "rgba(245, 101, 101, 0.85)";
+    const GLASS_GREEN  = "rgba(72, 199, 142, 0.85)";
+    const GLASS_PURPLE = "rgba(159, 122, 234, 0.85)";
+    const GLASS_ORANGE = "rgba(246, 173, 85, 0.85)";
+
+    const chartDefaults = {
+      color: "#e2e8f0",
+      borderColor: "rgba(255,255,255,0.08)",
+      font: { family: "Inter" },
+    };
+    Chart.defaults.color = chartDefaults.color;
+    Chart.defaults.borderColor = chartDefaults.borderColor;
+    Chart.defaults.font.family = chartDefaults.font.family;
+
+    // ── Hourly Traffic ─────────────────────────────────────────────────────────
+    const hours = Object.keys(hourlyData).map(h => h + ":00");
+    const counts = Object.values(hourlyData);
+
+    new Chart(document.getElementById("hourlyChart"), {
+      type: "bar",
+      data: {
+        labels: hours,
+        datasets: [{
+          label: "Visitors",
+          data: counts,
+          backgroundColor: "rgba(99,179,237,0.55)",
+          borderColor: GLASS_BLUE,
+          borderWidth: 1.5,
+          borderRadius: 6,
+          hoverBackgroundColor: GLASS_BLUE,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.05)" } },
+          x: { grid: { display: false } },
+        },
+      },
+    });
+
+    // ── Gender Pie ─────────────────────────────────────────────────────────────
+    new Chart(document.getElementById("genderChart"), {
+      type: "doughnut",
+      data: {
+        labels: Object.keys(genderData).length ? Object.keys(genderData) : ["No data"],
+        datasets: [{
+          data: Object.keys(genderData).length ? Object.values(genderData) : [1],
+          backgroundColor: [GLASS_BLUE, GLASS_PINK, GLASS_GREEN],
+          borderWidth: 2,
+          borderColor: "rgba(255,255,255,0.08)",
+          hoverOffset: 8,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: "bottom" },
+        },
+        cutout: "65%",
+      },
+    });
+
+    // ── Age Bar ────────────────────────────────────────────────────────────────
+    new Chart(document.getElementById("ageChart"), {
+      type: "bar",
+      data: {
+        labels: Object.keys(ageData),
+        datasets: [{
+          label: "Count",
+          data: Object.values(ageData),
+          backgroundColor: [GLASS_GREEN, GLASS_BLUE, GLASS_PURPLE, GLASS_ORANGE, GLASS_PINK],
+          borderWidth: 0,
+          borderRadius: 6,
+        }],
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.05)" } },
+          y: { grid: { display: false } },
+        },
+      },
+    });
+
+    // ── Live clock ─────────────────────────────────────────────────────────────
+    function updateClock() {
+      document.getElementById("headerTime").textContent =
+        new Date().toLocaleTimeString();
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // ── Search ─────────────────────────────────────────────────────────────────
+    document.getElementById("searchInput").addEventListener("input", function () {
+      const q = this.value.toLowerCase();
+      document.querySelectorAll("#visitorTable tbody tr").forEach(row => {
+        const id = (row.dataset.id || "").toLowerCase();
+        row.style.display = id.includes(q) ? "" : "none";
+      });
+    });
+
+    // ── Auto-refresh stats ─────────────────────────────────────────────────────
+    async function refreshStats() {
+      try {
+        const res = await fetch("/api/stats");
+        const data = await res.json();
+        document.getElementById("totalVisitors").textContent = data.total_visitors;
+        document.getElementById("newToday").textContent = data.new_today;
+        document.getElementById("returningVisitors").textContent = data.returning;
+        document.getElementById("statusDot").classList.add("pulse");
+      } catch (e) {
+        document.getElementById("statusText").textContent = "OFFLINE";
+        document.getElementById("statusDot").classList.remove("pulse");
+      }
+    }
+    setInterval(refreshStats, 10000);
+  </script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
