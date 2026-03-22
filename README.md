@@ -95,7 +95,7 @@ katomaran/
 ---
 
 ## 🎥 Explanation Video
-[Insert your Loom or YouTube Video Link explaining the codebase here...]
+[Katomaran Hackathon: Project Walkthrough & Explanation](https://www.loom.com/share/40dfc2f690a94fbf9f109006642854b7)
 
 ---
 
